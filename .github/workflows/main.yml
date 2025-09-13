@@ -11,7 +11,7 @@ permissions:
 
 env:
   AWS_REGION: us-east-1
-  ECR_REPOSITORY: php-laravel-movie-app   # <-- use your actual ECR repo name
+  ECR_REPOSITORY: php-app   # ✅ matches your repo name in ECR
 
 jobs:
   build-and-push:
