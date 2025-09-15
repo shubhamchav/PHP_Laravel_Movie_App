@@ -21,10 +21,10 @@ spec:
         - containerPort: 8080   # yaha apne app ka port daalo
         env:
         - name: DB_HOST
-          value: "<your-rds-endpoint>"
+          value: "movie-app.cx4smawkyvs9.ap-south-1.rds.amazonaws.com"
         - name: DB_USER
-          value: "<your-db-username>"
+          value: "admin"
         - name: DB_PASS
-          value: "<your-db-password>"
+          value: "Shubham1997"
         - name: DB_NAME
-          value: "<your-db-name>"
+          value: "movie-app"
