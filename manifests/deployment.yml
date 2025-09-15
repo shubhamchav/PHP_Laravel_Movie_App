@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-deployment
+  labels:
+    app: backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+      - name: backend-container
+        image: <your-account-id>.dkr.ecr.<region>.amazonaws.com/<your-repo>:latest
+        ports:
+        - containerPort: 8080   # yaha apne app ka port daalo
+        env:
+        - name: DB_HOST
+          value: "<your-rds-endpoint>"
+        - name: DB_USER
+          value: "<your-db-username>"
+        - name: DB_PASS
+          value: "<your-db-password>"
+        - name: DB_NAME
+          value: "<your-db-name>"
