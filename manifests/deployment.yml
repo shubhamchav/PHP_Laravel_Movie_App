@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: backend-container
-        image: <your-account-id>.dkr.ecr.<region>.amazonaws.com/<your-repo>:latest
+        image: 054037125756.dkr.ecr.ap-south-1.amazonaws.com/shubham_php_laravel_backend:latest
         ports:
         - containerPort: 8080   # yaha apne app ka port daalo
         env:
