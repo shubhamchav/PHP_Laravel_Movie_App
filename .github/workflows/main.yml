@@ -11,7 +11,7 @@ permissions:
 
 env:
   AWS_REGION: us-east-1
-  ECR_REPOSITORY: php-app   # ✅ matches your repo name in ECR
+  ECR_REPOSITORY: shubham_php_laravel_backend
 
 jobs:
   build-and-push:
