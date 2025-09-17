@@ -16,15 +16,19 @@ spec:
     spec:
       containers:
       - name: backend-container
-        image: 054037125756.dkr.ecr.ap-south-1.amazonaws.com/shubham_php_laravel_backend:latest
+        image: 543816070942.dkr.ecr.us-east-1.amazonaws.com/shubham_php_laravel_backend:latest
         ports:
-        - containerPort: 80   # yaha apne app ka port daalo
+        - containerPort: 8000   
         env:
+        - name: DB_CONNECTION
+          value: "mysql"
         - name: DB_HOST
           value: "shubhamdatabase.clbdj44v7c4x.us-east-1.rds.amazonaws.com"
-        - name: DB_USER
-          value: "admin"
-        - name: DB_PASS
-          value: "Shubham1997"
-        - name: DB_NAME
+        - name: DB_PORT
+          value: "3306"
+        - name: DB_DATABASE
           value: "shubhamdatabase"
+        - name: DB_USERNAME
+          value: "admin"
+        - name: DB_PASSWORD
+          value: "Shubham1997"
