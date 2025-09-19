@@ -43,12 +43,9 @@ jobs:
           ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
           ECR_REGISTRY=$ACCOUNT_ID.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com
           IMAGE_TAG=${{ github.sha }}
-
           echo "Building image: $ECR_REGISTRY/${{ env.ECR_REPOSITORY }}:$IMAGE_TAG"
-
           docker build -t $ECR_REGISTRY/${{ env.ECR_REPOSITORY }}:$IMAGE_TAG .
           docker push $ECR_REGISTRY/${{ env.ECR_REPOSITORY }}:$IMAGE_TAG
-
       # (Optional) Tag as "latest" too
       - name: Tag as latest
         run: |
@@ -56,42 +53,37 @@ jobs:
           ECR_REGISTRY=$ACCOUNT_ID.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com
           docker tag $ECR_REGISTRY/${{ env.ECR_REPOSITORY }}:${{ github.sha }} $ECR_REGISTRY/${{ env.ECR_REPOSITORY }}:latest
           docker push $ECR_REGISTRY/${{ env.ECR_REPOSITORY }}:latest
-
   deploy:
     needs: build-and-push
     runs-on: ubuntu-latest
-  
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-  
+
+      # Set up kubectl
       - uses: azure/setup-kubectl@v3
         with:
-          version: 'v1.28.1'
-  
+          version: 'v1.28.1' # can change if needed
+        id: install
+
+      # Configure AWS credentials for kubectl & EKS
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
-  
+
+      # Update kubeconfig for EKS cluster
       - name: Configure kubectl for EKS
-        run: |
-          aws eks update-kubeconfig \
-            --region ${{ env.AWS_REGION }} \
-            --name ${{ secrets.EKS_CLUSTER_NAME }} \
-            --role-arn ${{ secrets.AWS_ROLE_ARN }}
-  
-      - name: Check identity and permissions
-        run: |
-          aws sts get-caller-identity
-          kubectl auth can-i get deployments --namespace default
-  
+        run: aws eks --region ${{ env.AWS_REGION }} update-kubeconfig --name ${{ secrets.EKS_CLUSTER_NAME }}
+
+      # Replace the image tag in deployment.yaml
       - name: Update image tag in deployment.yaml
         run: |
           ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
           sed -i "s|image: .*|image: $ACCOUNT_ID.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY }}:${{ github.sha }}|" manifests/deployment.yml
-  
+      # Deploy to EKS
       - name: Deploy to EKS
         run: |
           kubectl apply -f manifests/deployment.yml
