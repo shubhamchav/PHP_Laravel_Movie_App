@@ -28,6 +28,10 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
+      - name: Print role ARN
+        run: echo "Using role ARN:${{ secrets.AWS_ROLE_ARN }}"
+
+
       # Log in to Amazon ECR
       - name: Login to Amazon ECR
         id: login-ecr
