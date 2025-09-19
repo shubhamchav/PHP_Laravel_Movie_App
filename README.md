@@ -1,6 +1,6 @@
 # Movie App Laravel
 
-A Laravel-based movie management API with full CRUD operations.
+A Laravel-based movie management API with full CRUD operations..
 
 ## Features
 
