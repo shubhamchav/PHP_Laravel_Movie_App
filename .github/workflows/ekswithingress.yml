@@ -3,7 +3,7 @@ name: Build, Push to ECR and Deploy Backend to EKS
 on:
   push:
     branches:
-      - master
+      - main
 
 permissions:
   id-token: write
@@ -28,7 +28,6 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
 
       # Login to Amazon ECR
-      - name: Login to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v2
 
       # Build, tag, and push Docker image
@@ -69,7 +68,7 @@ jobs:
         run: |
           if ! kubectl get ns ingress-nginx >/dev/null 2>&1; then
             echo "Installing NGINX Ingress Controller..."
-            kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.14.0/deploy/static/provider/aws/deploy.yaml
+            kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/kind/deploy.yaml
             echo "Waiting for Ingress controller LoadBalancer..."
             kubectl wait --namespace ingress-nginx \
               --for=condition=available --timeout=300s deployment/ingress-nginx-controller
