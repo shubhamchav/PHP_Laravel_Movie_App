@@ -3,7 +3,7 @@ name: Build, Push to ECR and Deploy Backend to EKS
 on:
   push:
     branches:
-      - main
+      - master
       
 permissions:
   id-token: write   
