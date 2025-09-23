@@ -4,9 +4,9 @@ on:
   push:
     branches:
       - master
-      
+
 permissions:
-  id-token: write   
+  id-token: write
   contents: read
 
 env:
@@ -16,7 +16,6 @@ env:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
@@ -32,7 +31,7 @@ jobs:
       - name: Login to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v2
 
-      # Build, tag, and push image
+      # Build, tag, and push Docker image
       - name: Build, Tag, and Push Docker Image
         run: |
           ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
@@ -45,7 +44,6 @@ jobs:
   deploy:
     needs: build-and-push
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -66,24 +64,37 @@ jobs:
       - name: Configure kubectl
         run: aws eks --region ${{ env.AWS_REGION }} update-kubeconfig --name ${{ secrets.EKS_CLUSTER_NAME }}
 
+      # Install NGINX Ingress Controller (if not installed)
+      - name: Install NGINX Ingress Controller
+        run: |
+          if ! kubectl get ns ingress-nginx >/dev/null 2>&1; then
+            echo "Installing NGINX Ingress Controller..."
+            kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.14.0/deploy/static/provider/aws/deploy.yaml
+            echo "Waiting for Ingress controller LoadBalancer..."
+            kubectl wait --namespace ingress-nginx \
+              --for=condition=available --timeout=300s deployment/ingress-nginx-controller
+          else
+            echo "Ingress Controller already installed."
+          fi
+
       # Replace image in deployment.yaml
       - name: Update deployment image
         run: |
           ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
           sed -i "s|image: .*|image: $ACCOUNT_ID.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY }}:${{ github.sha }}|" manifests/deployment.yml
 
-      # Deploy backend Deployment and Service
+      # Deploy Deployment & Service
       - name: Deploy Deployment & Service
         run: |
           kubectl apply -f manifests/deployment.yml
           kubectl apply -f manifests/service.yml
 
-      # Deploy Ingress for public access
+      # Deploy Ingress
       - name: Deploy Ingress
-        run: |
-          kubectl apply -f manifests/ingress.yml
+        run: kubectl apply -f manifests/ingress.yml
 
-      # Optional: get Ingress hostname
+      # Optional: Get Ingress hostname
       - name: Get Ingress hostname
         run: |
+          echo "Ingress hostname:"
           kubectl get ingress backend-ingress
