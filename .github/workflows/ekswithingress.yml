@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - master
-      
+
 permissions:
   id-token: write
   contents: read
@@ -41,7 +41,6 @@ jobs:
           echo "Building image: $ECR_REGISTRY/${{ env.ECR_REPOSITORY }}:$IMAGE_TAG"
           docker build -t $ECR_REGISTRY/${{ env.ECR_REPOSITORY }}:$IMAGE_TAG .
           docker push $ECR_REGISTRY/${{ env.ECR_REPOSITORY }}:$IMAGE_TAG
-
   deploy:
     needs: build-and-push
     runs-on: ubuntu-latest
@@ -77,19 +76,16 @@ jobs:
           else
             echo "Ingress Controller already installed."
           fi
-
       # Replace image in deployment.yaml
       - name: Update deployment image
         run: |
           ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
           sed -i "s|image: .*|image: $ACCOUNT_ID.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY }}:${{ github.sha }}|" manifests/deployment.yml
-
       # Deploy Deployment & Service
       - name: Deploy Deployment & Service
         run: |
           kubectl apply -f manifests/deployment.yml
           kubectl apply -f manifests/service.yml
-
       # Deploy Ingress
       - name: Deploy Ingress
         run: kubectl apply -f manifests/ingress.yml
