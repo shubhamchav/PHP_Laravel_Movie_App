@@ -22,6 +22,12 @@ jobs:
         id: set_tag
         run: echo "image_tag=${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
 
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
       - name: Build Docker image
         run: |
           ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
