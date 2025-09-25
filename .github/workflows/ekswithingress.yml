@@ -4,67 +4,74 @@ on:
   push:
     branches:
       - master
-      
+
 permissions:
   id-token: write
   contents: read
 
-env:
-  AWS_REGION: us-east-1
-  ECR_REPOSITORY: shubham_php_laravel_backend
-
 jobs:
-  build-and-push:
+  build:
     runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.set_tag.outputs.image_tag }}
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
 
-      # Configure AWS credentials via OIDC
+      - name: Set IMAGE_TAG
+        id: set_tag
+        run: echo "image_tag=${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+
+      - name: Build Docker image
+        run: |
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          ECR_REGISTRY=$ACCOUNT_ID.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com
+          docker build -t $ECR_REGISTRY/${{ vars.ECR_REPOSITORY }}:${{ steps.set_tag.outputs.image_tag }} .
+
+  push:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
+          aws-region: ${{ vars.AWS_REGION }}
 
-       # Log in to Amazon ECR
       - name: Login to Amazon ECR
-        id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      # Build, tag, and push Docker image
-      - name: Build, Tag, and Push Docker Image
+      - name: Push Docker image to ECR
         run: |
           ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-          IMAGE_TAG=${{ github.sha }}
-          ECR_REGISTRY=$ACCOUNT_ID.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com
-          echo "Building image: $ECR_REGISTRY/${{ env.ECR_REPOSITORY }}:$IMAGE_TAG"
-          docker build -t $ECR_REGISTRY/${{ env.ECR_REPOSITORY }}:$IMAGE_TAG .
-          docker push $ECR_REGISTRY/${{ env.ECR_REPOSITORY }}:$IMAGE_TAG
+          ECR_REGISTRY=$ACCOUNT_ID.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com
+          IMAGE_TAG=${{ needs.build.outputs.image_tag }}
+          docker tag $ECR_REGISTRY/${{ vars.ECR_REPOSITORY }}:$IMAGE_TAG $ECR_REGISTRY/${{ vars.ECR_REPOSITORY }}:$IMAGE_TAG
+          docker push $ECR_REGISTRY/${{ vars.ECR_REPOSITORY }}:$IMAGE_TAG
+
   deploy:
-    needs: build-and-push
     runs-on: ubuntu-latest
+    needs: push
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Setup kubectl
       - uses: azure/setup-kubectl@v3
         with:
           version: 'v1.28.1'
 
-      # Configure AWS credentials for kubectl & EKS
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
+          aws-region: ${{ vars.AWS_REGION }}
 
-      # Update kubeconfig for EKS
       - name: Configure kubectl
-        run: aws eks --region ${{ env.AWS_REGION }} update-kubeconfig --name ${{ secrets.EKS_CLUSTER_NAME }}
+        run: aws eks --region ${{ vars.AWS_REGION }} update-kubeconfig --name ${{ secrets.EKS_CLUSTER_NAME }}
 
-      # Install NGINX Ingress Controller (if not installed)
       - name: Install NGINX Ingress Controller
         run: |
           if ! kubectl get ns ingress-nginx >/dev/null 2>&1; then
@@ -76,21 +83,21 @@ jobs:
           else
             echo "Ingress Controller already installed."
           fi
-      # Replace image in deployment.yaml
+
       - name: Update deployment image
         run: |
           ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-          sed -i "s|image: .*|image: $ACCOUNT_ID.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY }}:${{ github.sha }}|" manifests/deployment.yml
-      # Deploy Deployment & Service
+          IMAGE_TAG=${{ needs.build.outputs.image_tag }}
+          sed -i "s|image: .*|image: $ACCOUNT_ID.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com/${{ vars.ECR_REPOSITORY }}:$IMAGE_TAG|" manifests/deployment.yml
+
       - name: Deploy Deployment & Service
         run: |
           kubectl apply -f manifests/deployment.yml
           kubectl apply -f manifests/service.yml
-      # Deploy Ingress
+
       - name: Deploy Ingress
         run: kubectl apply -f manifests/ingress.yml
 
-      # Optional: Get Ingress hostname
       - name: Get Ingress hostname
         run: |
           echo "Ingress hostname:"
