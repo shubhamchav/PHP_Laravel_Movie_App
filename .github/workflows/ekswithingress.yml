@@ -1,4 +1,4 @@
-name: Build, Push to ECR and Deploy Backend to EKs
+name: Build, Push to ECR and Deploy Backend to EKS
 
 on:
   push:
