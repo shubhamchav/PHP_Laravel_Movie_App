@@ -4,14 +4,16 @@ FROM php:8.2-apache
 # Set working directory
 WORKDIR /var/www/html
 
-# Install system dependencies
+## Install system dependencies and Xdebug for code coverage
 RUN apt-get update \
     && apt-get install -y \
         libzip-dev \
         unzip \
         git \
         curl \
-    && docker-php-ext-install zip pdo pdo_mysql
+    && docker-php-ext-install zip pdo pdo_mysql \
+    && pecl install xdebug \
+    && docker-php-ext-enable xdebug
 
 # Enable Apache mod_rewrite
 RUN a2enmod rewrite
